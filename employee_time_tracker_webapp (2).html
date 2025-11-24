@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employee Time Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px; }
+    h1 { text-align: center; }
+    .card { border: 1px solid #ccc; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  </style>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px; }
+    h1 { text-align: center; }
+    .brand { text-align:center; font-size:20px; font-weight:bold; margin-bottom:20px; color:#b33; }
+    .card { border: 1px solid #ccc; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="brand">Tava Fry Employee Tracker</div>
+  <h1>Employee Time Tracker</h1>
+
+  <div class="card">
+    <h2>Clock In / Clock Out</h2>
+    <input id="employeeName" placeholder="Employee Name" />
+    <button onclick="clockIn()">Clock In</button>
+    <button onclick="clockOut()">Clock Out</button>
+  </div>
+
+  <div class="card">
+    <h2>Pay Calculator</h2>
+    <input id="payRate" type="number" placeholder="Hourly Pay Rate ($)" />
+  </div>
+
+  <h2>Employee Records</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Clock In</th>
+        <th>Clock Out</th>
+        <th>Total Hours</th>
+        <th>Pay</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTable"></tbody>
+  </table>
+
+  <script>
+    let records = JSON.parse(localStorage.getItem('records') || '[]');
+
+    function clockIn() {
+      const name = document.getElementById("employeeName").value;
+      if (!name) return alert("Enter employee name");
+
+      records.push({ name, in: new Date(), out: null, hours: 0, pay: 0 });
+      renderTable(); saveData();
+    }
+
+    function clockOut() {
+      const name = document.getElementById("employeeName").value;
+      const rate = Number(document.getElementById("payRate").value);
+      if (!name || !rate) return alert("Enter name + pay rate");
+
+      const rec = records.find(r => r.name === name && r.out === null);
+      if (!rec) return alert("No active clock-in for this employee");
+
+      rec.out = new Date();
+      const diffMs = rec.out - rec.in;
+      rec.hours = (diffMs / 1000 / 60 / 60).toFixed(2);
+      rec.pay = (rec.hours * rate).toFixed(2);
+
+      renderTable();
+    }
+
+    function saveData() {
+      localStorage.setItem('records', JSON.stringify(records));
+    }
+
+    function renderTable() {
+      const table = document.getElementById("recordsTable");
+      table.innerHTML = "";
+      records.forEach(r => {
+        table.innerHTML += `
+          <tr>
+            <td>${r.name}</td>
+            <td>${r.in ? r.in.toLocaleString() : "-"}</td>
+            <td>${r.out ? r.out.toLocaleString() : "-"}</td>
+            <td>${r.hours}</td>
+            <td>$${r.pay}</td>
+          </tr>
+        `;
+      });
+    }
+  </script>
+
+</body>
+</html>
