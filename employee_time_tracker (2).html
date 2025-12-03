@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employee Time Tracker</title>
+  <style>
+    /* Modern Mobile UI Enhancements */
+    body { font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 15px; background:#fafafa; }
+    h1 { text-align: center; font-size: 24px; margin-bottom: 15px; }
+    .brand { text-align:center; font-size:22px; font-weight:bold; margin-bottom:20px; color:#b33; }
+
+    .card { 
+      border: 1px solid #ddd; 
+      padding: 18px; 
+      border-radius: 14px; 
+      margin-bottom: 22px; 
+      background: white;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+
+    input, button, select { 
+      padding: 14px; 
+      margin: 7px 0; 
+      width: 100%; 
+      font-size: 17px; 
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background:#b33;
+      color:white;
+      border:none;
+      font-weight:bold;
+      transition:0.2s;
+      cursor:pointer;
+    }
+    button:active {
+      transform:scale(0.97);
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; background:white; border-radius:10px; overflow:hidden; }
+    th { background:#b33; color:white; padding:10px; font-size:15px; }
+    td { border-bottom:1px solid #eee; padding:10px; font-size:14px; }
+
+    @media (max-width: 540px) {
+      h1 { font-size: 20px; }
+      .card { padding: 15px; }
+      input, button, select { font-size: 16px; padding: 12px; }
+      table { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand">Tava Fry Employee Tracker</div>
+  <h1>Employee Time Tracker</h1>
+
+  <div class="card">
+    <h2>Clock In / Clock Out</h2>
+    <!-- Employee now chooses from a dropdown populated by admin -->
+    <select id="employeeSelect">
+      <option value="">Select Employee</option>
+    </select>
+    <button onclick="clockIn()">Clock In</button>
+    <button onclick="clockOut()">Clock Out</button>
+  </div>
+
+  <div class="card">
+    <h2>Pay Calculator</h2>
+    <input id="payRate" type="number" placeholder="Hourly Pay Rate ($)" />
+  </div>
+
+  <h2>Employee Records</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Clock In</th>
+        <th>Clock Out</th>
+        <th>Total Hours</th>
+        <th>Pay</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTable"></tbody>
+  </table>
+
+  <div class="card">
+    <h2>Export Hours Sheet</h2>
+    <button onclick="downloadCSV()">Download Hours Sheet (CSV)</button>
+  </div>
+
+  <script>
+    // Persisted data
+    let records = JSON.parse(localStorage.getItem('records') || '[]');
+    let employees = JSON.parse(localStorage.getItem('employees') || '[]');
+
+    function saveData() {
+      localStorage.setItem('records', JSON.stringify(records));
+    }
+
+    function saveEmployees() {
+      localStorage.setItem('employees', JSON.stringify(employees));
+    }
+
+    function renderEmployeeOptions() {
+      const select = document.getElementById('employeeSelect');
+      if (!select) return;
+      select.innerHTML = '<option value="">Select Employee</option>';
+      employees.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+    }
+
+    function clockIn() {
+      const select = document.getElementById('employeeSelect');
+      const name = select.value;
+      if (!name) return alert('Select an employee name');
+
+      records.push({ name, in: new Date(), out: null, hours: 0, pay: 0 });
+      renderTable();
+      saveData();
+    }
+
+    function clockOut() {
+      const select = document.getElementById('employeeSelect');
+      const name = select.value;
+      const rate = Number(document.getElementById('payRate').value);
+      if (!name || !rate) return alert('Select name and enter pay rate');
+
+      const rec = records.find(r => r.name === name && r.out === null);
+      if (!rec) return alert('No active clock-in for this employee');
+
+      rec.out = new Date();
+      const diffMs = rec.out - rec.in;
+      rec.hours = (diffMs / 1000 / 60 / 60).toFixed(2);
+      rec.pay = (rec.hours * rate).toFixed(2);
+
+      renderTable();
+      saveData();
+    }
+
+    function renderTable() {
+      const table = document.getElementById('recordsTable');
+      table.innerHTML = '';
+      records.forEach(r => {
+        table.innerHTML += `
+          <tr>
+            <td>${r.name}</td>
+            <td>${r.in ? new Date(r.in).toLocaleString() : '-'}</td>
+            <td>${r.out ? new Date(r.out).toLocaleString() : '-'}</td>
+            <td>${r.hours}</td>
+            <td>$${r.pay}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function downloadCSV() {
+      if (records.length === 0) return alert('No records to export.');
+
+      let csv = 'Name,Clock In,Clock Out,Hours,Pay
+';
+
+      records.forEach(r => {
+        const row = [
+          `"${r.name}"`,
+          `"${r.in ? new Date(r.in).toLocaleString() : ''}"`,
+          `"${r.out ? new Date(r.out).toLocaleString() : ''}"`,
+          r.hours,
+          r.pay
+        ].join(',');
+        csv += row + '
+';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'tava_fry_employee_hours.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Initial render
+    renderEmployeeOptions();
+    renderTable();
+  </script>
+
+  <div class="card" style="margin-top:25px;">
+    <h2>Employee Instructions</h2>
+    <ul style="font-size:16px; line-height:1.4; padding-left:18px;">
+      <li>Select your name from the dropdown at the top.</li>
+      <li>Press <strong>Clock In</strong> when you start working.</li>
+      <li>Press <strong>Clock Out</strong> when you finish your shift.</li>
+      <li>Make sure the pay rate is entered before clocking out.</li>
+      <li>Your hours and pay will appear in the table below.</li>
+      <li>Use <strong>Download Hours Sheet (CSV)</strong> to export.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Admin Panel</h2>
+    <input id="adminPass" type="password" placeholder="Admin Password" />
+    <button onclick="adminLogin()">Unlock Admin Tools</button>
+
+    <button id="clearBtn" onclick="clearRecords()" disabled>Clear All Records</button>
+
+    <h3 style="margin-top:15px;">Manage Employees</h3>
+    <input id="newEmployeeName" placeholder="New Employee Name" disabled />
+    <button id="addEmpBtn" onclick="addEmployee()" disabled>Add Employee</button>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = 'MOMisbest12$';
+    let adminUnlocked = false;
+
+    function setAdminState(unlocked) {
+      adminUnlocked = unlocked;
+      const clearBtn = document.getElementById('clearBtn');
+      const newEmp = document.getElementById('newEmployeeName');
+      const addEmpBtn = document.getElementById('addEmpBtn');
+      if (clearBtn) clearBtn.disabled = !unlocked;
+      if (newEmp) newEmp.disabled = !unlocked;
+      if (addEmpBtn) addEmpBtn.disabled = !unlocked;
+    }
+
+    function adminLogin() {
+      const pwd = document.getElementById('adminPass').value;
+      if (pwd !== ADMIN_PASSWORD) {
+        alert('Incorrect admin password.');
+        setAdminState(false);
+        return;
+      }
+      setAdminState(true);
+      alert('Admin tools unlocked.');
+    }
+
+    function clearRecords() {
+      if (!adminUnlocked) {
+        alert('Admin tools are locked. Enter admin password first.');
+        return;
+      }
+      if (!confirm('Delete ALL records?')) return;
+      records = [];
+      saveData();
+      renderTable();
+      alert('All records cleared.');
+    }
+
+    function addEmployee() {
+      if (!adminUnlocked) {
+        alert('Admin tools are locked. Enter admin password first.');
+        return;
+      }
+      const nameInput = document.getElementById('newEmployeeName');
+      const name = nameInput.value.trim();
+      if (!name) return alert('Enter a name to add.');
+      if (employees.includes(name)) return alert('Employee already exists.');
+
+      employees.push(name);
+      saveEmployees();
+      renderEmployeeOptions();
+      nameInput.value = '';
+      alert('Employee added.');
+    }
+
+    // Initialize admin controls as locked
+    setAdminState(false);
+  </script>
+
+</body>
+</html>
